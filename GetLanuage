@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ $(env | grep -w LANG | grep en | wc -L) -gt 0 ]
+then
+echo "en"
+fi
+
+if [ $(env | grep -w LANG | grep zh | wc -L) -gt 0 ]
+then
+echo "cn"
+fi

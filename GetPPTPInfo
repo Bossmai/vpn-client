@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# $1 passwd
+
+
+function getServerIp() {
+	# check vpnpptp profile 
+	echo $1 | sudo -S cat /etc/ppp/peers/vpnpptp >/dev/null
+	if [ $? -eq 1 ]
+	then
+		# no vpnpptp
+		echo "0.0.0.0"
+	else 
+		echo $1 | sudo -S cat /etc/ppp/peers/vpnpptp | grep -w pty | awk '{print $3}'
+	fi
+}
+
+function getUserName() {
+	# check vpnpptp profile 
+	echo $1 | sudo -S cat /etc/ppp/peers/vpnpptp >/dev/null
+	if [ $? -eq 1 ]
+	then
+		echo "none"
+	else 
+		echo $1 | sudo -S cat /etc/ppp/peers/vpnpptp | grep -w name | awk '{print $2}'
+	fi
+}
+
+function getPassword() {
+	# check chap-secrets
+	tmp_vpn_password=$(echo $1 | sudo -S cat /etc/ppp/chap-secrets | grep "dtc")
+	if [ -z "$tmp_vpn_password" ]
+	then
+		# change passwd
+		echo "pass"
+	else 
+		echo $1 | sudo -S cat /etc/ppp/chap-secrets | grep "dtc" | awk '{print $3}' | sed 's/"//g'
+	fi
+}
+
+if [ $# -gt 0 ]
+then
+	if [ "$2" = "IP" ]
+	then
+		echo $(getServerIp $1)
+	elif [ "$2" = "USER" ]
+	then
+		echo $(getUserName $1)
+	elif [ "$2" = "PASS" ]
+	then
+		echo $(getPassword $1)
+	fi
+
+else
+	echo "GetPPTPInfo para error!"
+	echo "false"
+fi
+
+
+

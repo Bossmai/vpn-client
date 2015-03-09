@@ -1,0 +1,24 @@
+#!/bin/bash
+# $1 report url
+# $2 LOCAL_IP
+# $3 LOCAL_MAC
+# $4 VPN_CLIENT_VERSION
+# $5 VPN_IP
+# $6 VPN_USER
+# $7 VPN_PASSWOR
+# $8 VPN_TIMEOUT
+# $9 VPN_STATUS
+# $10 VPN_STATUS_VALUE
+# $# 10
+
+#if [ $# -ne 10 ]
+#then
+#	echo "ReportToServer para error!"
+#else
+#req_string=$(echo $1"?#LOCAL_IP="$2"&LOCAL_MAC="$3"&VPN_CLIENT_VERSION="$4"&VPN_IP="$5"&VPN_USER="$6"&VPN_PASSWOR="$7"&VPN_TIMEOUT="$8"&VPN_STATUS="$9"&VPN_STATUS_VALUE="${10}#)
+#echo $req_string
+#req_result=$(curl $req_string)
+#echo $req_result
+#fi
+
+echo "DONE"

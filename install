@@ -1,0 +1,30 @@
+#!/bin/bash
+
+echo "chmod for curl vpn-daemon autorun"
+chmod 777 ./usr/bin/curl
+chmod 777 ./daemon/vpn-daemon
+chmod 777 ./autorun
+
+tmp_autorun=$(cat $HOME/download/boot.sh | grep "vpn-client") 
+if [ -z "$tmp_autorun" ]
+then
+	# install boot.sh to $HOME/download
+	echo "install autorun to $HOME/download/boot.sh"
+
+	echo "# run vpn-client in background" >> $HOME/download/boot.sh
+	echo "bash $HOME/download/vpn-client/autorun &" >> $HOME/download/boot.sh
+else
+	echo "autorun have been installed"
+fi
+# install curl
+if [ ! -f /usr/bin/curl ]
+then
+	echo "install curl to /usr/bin"
+	echo "123" | sudo -S cp ./usr/bin/curl /usr/bin/curl
+else
+	echo "curl have been installed"
+fi
+
+echo "install ok"
+
+

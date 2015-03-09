@@ -1,0 +1,2 @@
+#!/bin/bash
+echo "[$(TZ="Asia/Shanghai" date +%F" "%H:%M:%S)]"": "

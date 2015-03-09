@@ -1,0 +1,96 @@
+#!/bin/bash
+
+# $1 supasswd
+# $2 server ip
+# $3 username
+# $4 passwd
+# $5 para
+# $# 5
+
+
+create_pptp_test="true" #default false
+
+rm -rf ./tmpvpnpptp
+rm -rf ./tmpchap
+
+# $1 filename
+# $2 server ip
+# $3 username
+function setPptpProfile() {
+	tmp_server_ip=$(cat $1 | grep -oE "([0-9]{1,3}\.){3}[0-9]{1,3}")
+	tmp_user_name=$(cat $1 | grep -w name | awk '{print $2}')
+	echo "$tmp_server_ip"
+	echo "$tmp_user_name"
+	cat $1 | sed 's/'"$tmp_server_ip"'/'"$2"'/g' | sed 's/'"$tmp_user_name"'/'"$3"'/g' 
+	sed -i 's/'"$tmp_server_ip"'/'"$2"'/g' $1
+	sed -i 's/'"$tmp_user_name"'/'"$3"'/g' $1
+}
+
+# $1 filename
+# $2 username
+# $3 passwd
+# $4 para
+function setChap() {
+	tmp_vpnpptp=$(cat $1 | grep -v "#" | grep "vpnpptp" | head -1)
+	#echo "$tmp_vpnpptp"
+	if [ -z "$tmp_vpnpptp" ]
+	then 
+		echo "$2 vpnpptp \"$3\" *" >> $1
+		cat $1
+	else
+		tmp_user=$(cat $1 | grep "vpnpptp" | grep -v "#" | head -1 |  awk '{print $1}')
+		#echo $tmp_user
+		sed -i 's/'$tmp_user'/'$2'/g' $1
+		tmp_pass=$(cat $1 | grep "vpnpptp" | grep -v "#" | head -1 | awk '{print $3}' | sed 's/\"//g')
+		sed -i 's/'"$tmp_pass"'/'"$3"'/g' $1
+		cat $1
+	fi
+}
+
+
+if [ $# -lt 4 ] || [ $# -gt 5 ]
+then
+	echo "CreatePPTP para error!"
+	echo "false"
+else
+
+	# check vpnpptp profile 
+	echo $1 | sudo -S cat /etc/ppp/peers/vpnpptp >/dev/null
+	
+	if [ $? -eq 0 ]
+	then
+		echo "vpnpptp exsit"
+		#echo $1 | sudo -S cat /etc/ppp/peers/vpnpptp >./tmpvpnpptp
+		cp ./vpnpptp ./tmpvpnpptp
+		setPptpProfile ./tmpvpnpptp $2 $3
+		# TODO---
+		echo $1 | sudo -S cp ./tmpvpnpptp /etc/ppp/peers/vpnpptp
+	else
+		cp ./vpnpptp ./tmpvpnpptp
+		setPptpProfile ./tmpvpnpptp $2 $3
+		# TODO---
+		echo $1 | sudo -S cp ./tmpvpnpptp /etc/ppp/peers/vpnpptp
+	fi
+	
+	# check chap-secrets
+	echo $1 | sudo -S cat /etc/ppp/chap-secrets >/dev/null
+	if [ $? -eq 0 ]
+	then
+		echo "chap-secrets exsit"
+		#echo $1 | sudo -S cat /etc/ppp/chap-secrets >./tmpchap
+		cp ./chap ./tmpchap
+		setChap ./tmpchap $3 $4 $5
+		# TODO---
+		echo $1 | sudo -S cp ./tmpchap /etc/ppp/chap-secrets
+	else
+		cp ./chap ./tmpchap
+		setChap ./tmpchap $3 $4 $5
+		# TODO---
+		echo $1 | sudo -S cp ./tmpchap /etc/ppp/chap-secrets
+	fi
+	echo "OK"
+
+fi
+
+
+

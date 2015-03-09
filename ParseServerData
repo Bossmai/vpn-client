@@ -1,0 +1,40 @@
+#!/bin/bash
+# $1 string to be parse 
+# $2 IP/STAUTS/UPDATE
+# $# 1
+
+function ParseReqIpRspData() {
+	tmp_vpn_rsp_process_result=$(echo $1 | sed 's/\"//g' |  sed 's/'{'//g' |  sed 's/'}'//g' |  sed 's/,/ /g')
+	echo $tmp_vpn_rsp_process_result
+}
+
+function ParsePostStatusRspData() {
+	tmp_vpn_post_rsp_process_result=$(echo $1 | sed 's/\"//g' |  sed 's/'{'//g' |  sed 's/'}'//g' |  sed 's/,/ /g')
+	echo $tmp_vpn_post_rsp_process_result
+}
+
+function ParseReqUpdateRspData() {
+	tmp_vpn_update_rsp_process_result=$(echo $1 | sed 's/\"//g' |  sed 's/'{'//g' |  sed 's/'}'//g' |  sed 's/,/ /g')
+	echo $tmp_vpn_update_rsp_process_result
+}
+
+
+if [ $# -gt 0 ]
+then
+	if [ "$2" = "IP" ]
+	then
+		echo $(ParseReqIpRspData $1)
+	elif [ "$2" = "STAUTS" ]
+	then
+		echo $(ParsePostStatusRspData $1)
+	elif [ "$2" = "UPDATE" ]
+	then
+		echo $(ParseReqUpdateRspData $1)
+	else
+		echo "ParseServerData para error!"
+		echo "false"
+	fi
+else
+	echo "ParseServerData para missed!"
+	echo "false"
+fi

@@ -1,0 +1,410 @@
+#!/bin/bash
+
+#vnp client version number [0-9999]
+vpn_client_version=102
+
+# default values
+default_gw="192.168.3.1"
+
+# default DNS use google's
+default_nameserver1="8.8.8.8"
+default_nameserver2="8.8.4.4"
+# internal eth
+default_eth_interface="eth0"
+# bad ping total try cout, if bad count more than this, it will change another vpn ip auto
+default_total_bad_network_try_count=3
+# su pass 
+supasswd="Dextrys2012"
+
+# default peers must create manual
+default_peers="vpnpptp"
+# vpn use ppp0 for nornal interface must not change
+default_interface="ppp0"
+
+# TODO --use for test
+# use for test
+vpn_use_deamon="true"  # default "true"
+vpn_client_loop="true" # default "true"
+vpn_update_check="false" # default "true"
+vpn_unzip_update_file="false" #default "true"
+use_default_eth_config="false" #default "false"
+#end test
+
+
+# the url get vpn info for server
+server_req_add_url="XXX.XXX.XXX.XXX"
+# the url post status to server
+server_post_status_url="YYY.YYY.YYY.YYY"
+# the url for update for server
+server_update_url="ZZZ.ZZZ.ZZZ.ZZZ"
+
+# old vpn account info
+old_vpn_serverip=""
+old_vpn_uname=""
+old_vpn_passwd=""
+old_vpn_para=""
+
+# current vpn account info
+current_vpn_serverip=""
+current_vpn_uname=""
+current_vpn_passwd=""
+current_vpn_timeout=''
+current_vpn_para=""
+
+# local machine info
+current_local_mac=""
+current_local_ip=""
+
+# sleep time for change vpn time (s)
+change_vpn_time_interval=600
+# sleep time for check status time (s)
+status_check_time_interval=300
+
+is_server_req_success="false"
+
+# if connect to a vpn server
+connetc_to_vpn="false"
+
+# vpn_remote_ip
+vpn_remote_ip=""
+vpn_remote_ip_len=0
+
+#check if another running exsit
+# if ture must exit
+if [ "$(ps -e | grep -o vpn-daemon)" = "vpn-daemon" ]
+then
+	pgrep vpn-daemon | xargs kill -9
+fi
+
+echo $(bash ./GetDateString)"Start vpn-deamon"
+if [ "$vpn_use_deamon" = "true" ]
+then
+	./daemon/vpn-daemon &
+fi
+
+echo $(bash ./GetDateString)"Please wait 10's for booting...."
+sleep 10
+
+
+
+#add-beg
+mac_string_en="HWaddr"
+mac_string_cn="硬件地址"
+have_ip_eth="eth"
+
+if [ $(env | grep -w LANG | grep en | wc -L) -gt 0 ]
+then
+tmp_lan="en"
+fi
+
+if [ $(env | grep -w LANG | grep zh | wc -L) -gt 0 ]
+then
+tmp_lan="cn"
+fi
+
+echo $tmp_lan
+
+eth_cout=$(ifconfig | grep "eth" | awk '{print $1}' | wc -l)
+
+echo $eth_cout
+if [ -n "$eth_cout" ]
+then
+	tmp_eth_cout=1
+	while [ $tmp_eth_cout -le $eth_cout ]
+	do	
+		echo "tmp_eth_cout=$tmp_eth_cout"
+		tmp_eth=$(ifconfig | grep "eth" | head -$tmp_eth_cout | tail -1 | awk '{print $1}')	
+		echo $tmp_eth
+		if [ -n "$tmp_eth" ]
+		then
+			tmp_ip=""
+			tmp_ip=$(ifconfig $tmp_eth 2>/dev/null | grep "inet " | awk '{print $2}' | grep -oE "([0-9]{1,3}\.){3}[0-9]{1,3}") 
+			echo $tmp_ip
+			#echo $tmp_ip > "/home/dtc/download/localip.ini"
+
+			tmp_mac=""
+			tmp_mac_string=$mac_string_en
+
+			if [ "$tmp_lan" = "cn" ]
+			then
+			tmp_mac_string=$mac_string_cn
+			fi
+
+			tmp_mac=$(ifconfig $tmp_eth 2>/dev/null | grep $tmp_mac_string | awk '{print $5}')
+			echo $tmp_mac
+			#echo $tmp_mac > "/home/dtc/download/localmac.ini"
+			
+			if [ -n "$tmp_ip" ]
+			then
+				echo "found ip"
+				have_ip_eth=$tmp_eth
+				break
+			fi
+
+		fi
+		tmp_eth_cout=$(($tmp_eth_cout + 1))
+	done
+fi
+
+#add-end
+
+# get default eth interface
+tmp_eth=$(ifconfig | grep "$have_ip_eth" | head -1  | awk '{print $1}')
+if [ -n "$tmp_eth" ] && [ "$use_default_eth_config" = "false" ]
+then
+	default_eth_interface=$tmp_eth
+	echo $(bash ./GetDateString)"default_eth_interface: "$default_eth_interface
+fi
+
+# get default route
+tmp_route=$(route -n | grep ^"0.0.0.0" | awk '{print $2}')
+if [ -n "$tmp_route" ]
+then
+	default_gw=$tmp_route
+	echo $(bash ./GetDateString)"default_gw: "$default_gw
+fi
+
+
+# get current eth ip
+current_local_ip=$(bash ./GetIPMac $default_eth_interface "IP")
+echo $(bash ./GetDateString)"current_local_ip: "$current_local_ip
+echo $current_local_ip | grep "false"
+if [ $? -eq 0 ]
+then
+	current_local_ip="0.0.0.0"
+fi	
+# get current eth mac
+current_local_mac=$(bash ./GetIPMac $default_eth_interface "MAC")
+echo $(bash ./GetDateString)"current_local_mac: "$current_local_mac	
+echo $current_local_mac | grep "false"
+if [ $? -eq 0 ]
+then
+	current_local_mac="0.0.0.0"
+fi
+
+# check update
+#echo $(bash ./GetDateString)"server_update_url: "$server_update_url
+echo $(bash ./GetDateString)"current_local_ip: "$current_local_ip
+echo $(bash ./GetDateString)"current_local_mac: "$current_local_mac
+echo $(bash ./GetDateString)"vpn_client_version: "$vpn_client_version
+
+while $vpn_client_loop
+do
+	# poff
+	echo $(bash ./GetDateString)"Try to close exsit pptp..."
+	echo $supasswd | sudo -S poff
+	sleep 3
+	
+	#set default gateway
+	default_gw="192.168.3.1"
+	# rest default route
+	echo $(bash ./GetDateString)"Rest route to default"
+	echo $(bash ./GetDateString)"default_gw: "$default_gw
+	echo $(bash ./GetDateString)"default_eth_interface: "$default_eth_interface
+
+	# add default route
+	echo $(bash ./GetDateString)"add default gw route $default_gw $default_eth_interface"
+	echo $supasswd | sudo -S route add default gw "$default_gw" dev "$default_eth_interface"
+	#echo $(bash ./GetDateString)"del route 0.0.0.0"
+	#echo $supasswd | sudo -S route del -net 0.0.0.0
+	#echo $supasswd | sudo -S route del -net 0.0.0.0
+	#echo $supasswd | sudo -S route del -net 0.0.0.0
+	tmp_default_gw=$(echo $default_gw | grep "192.168.3")
+	if [ -n "$tmp_default_gw" ]
+	then
+		echo $(bash ./GetDateString)"network 192.168.3.0"
+		#echo $supasswd | sudo -S route del -net 192.168.2.0 netmask 255.255.255.0
+		#echo $supasswd | sudo -S route add -net 192.168.2.0 netmask 255.255.255.0 gw 192.168.1.1 dev eth0
+	fi
+	tmp_default_gw=$(echo $default_gw | grep "192.168.2")
+	if [ -n "$tmp_default_gw" ]
+	then
+		echo $(bash ./GetDateString)"network 192.168.2.0"
+		#echo $supasswd | sudo -S route del -net 192.168.1.0 netmask 255.255.255.0
+		#echo $supasswd | sudo -S route add -net 192.168.1.0 netmask 255.255.255.0 gw 192.168.2.1 dev eth0
+	fi
+	sleep 5
+	
+	# get vpn info from local
+	old_vpn_serverip=$(bash ./GetPPTPInfo $supasswd "IP")
+	old_vpn_uname=$(bash ./GetPPTPInfo $supasswd "USER")
+	old_vpn_passwd=$(bash ./GetPPTPInfo $supasswd "PASS")	
+
+	echo $old_vpn_serverip
+	echo $old_vpn_uname
+	echo $old_vpn_passwd
+
+	# get vpn server info frome http server
+	is_server_req_success="false"
+	echo $(bash ./GetDateString)"req: $server_req_add_url"
+	
+	# send a req to server
+	tmp_vpn_rsp_info=$(bash ./GetFromServer "$server_req_add_url" $current_local_ip $current_local_mac $vpn_client_version $old_vpn_serverip $old_vpn_uname $old_vpn_passwd $change_vpn_time_interval) 
+	echo $(bash ./GetDateString)$tmp_vpn_rsp_info
+
+	tmp_vpn_rsp_result=$(echo $tmp_vpn_rsp_info | grep "VPN_IP")
+	tmp_vpn_rsp_result_count=$(echo $tmp_vpn_rsp_result | wc -L)
+
+	if [ $tmp_vpn_rsp_result_count -gt 10 ]
+	then
+		vpn_result_data=$(bash ./ParseServerData "$tmp_vpn_rsp_info" "IP")
+		current_vpn_serverip=$(echo $vpn_result_data | awk '{print $1}' | awk -F ':' '{print $2}')
+		current_vpn_uname=$(echo $vpn_result_data | awk '{print $2}' | awk -F ':' '{print $2}')
+		current_vpn_passwd=$(echo $vpn_result_data | awk '{print $3}' | awk -F ':' '{print $2}')
+		current_vpn_timeout=$(echo $vpn_result_data | awk '{print $4}' | awk -F ':' '{print $2}')
+		current_vpn_para=$(echo $vpn_result_data | awk '{print $5}' | awk -F ':' '{print $2}')
+		# set vpn timeout 
+		if [ $current_vpn_timeout -gt 600 ]
+		then
+			echo $(bash ./GetDateString)"set server timeout value to: "$current_vpn_timeout	
+			change_vpn_time_interval=$current_vpn_timeout
+		else
+			echo $(bash ./GetDateString)"server timeout value must big than: 600's"			
+		fi
+
+		echo $(bash ./GetDateString)"current_vpn_serverip: "$current_vpn_serverip
+		echo $(bash ./GetDateString)"current_vpn_uname: "$current_vpn_uname
+		echo $(bash ./GetDateString)"current_vpn_passwd: "$current_vpn_passwd
+		echo $(bash ./GetDateString)"current_vpn_timeout: "$current_vpn_timeout
+		echo $(bash ./GetDateString)"current_vpn_para: "$current_vpn_para
+		
+		# check values
+		if [ -z "$current_vpn_serverip" ] || [ -z "$current_vpn_uname" ]  || [ -z "$current_vpn_passwd" ]  || [ -z "$current_vpn_timeout" ]
+		then
+			echo $(bash ./GetDateString)"request ip rsp some values is invalid"
+			is_server_req_success="false"
+		else
+			is_server_req_success="true"
+		fi
+	else
+		echo $(bash ./GetDateString)"Get vpn req from server faile"
+		is_server_req_success="false"
+	fi
+
+	if [ "$is_server_req_success" = "true" ]
+	then
+		# create vpn profile
+		echo $(bash ./GetDateString)"create vpn profile"
+		create_result=$(bash ./CreatePPTP $supasswd $current_vpn_serverip $current_vpn_uname $current_vpn_passwd $current_vpn_para)
+		echo $(bash ./GetDateString)$create_result
+		create_result=$(echo $create_result | grep "OK")
+		if [ -n "$create_result" ]
+		then
+			echo $(bash ./GetDateString)"create vpn profile OK"
+			# add vpn server ip for to route
+			echo $(bash ./GetDateString)"add ip to route:" $current_vpn_serverip
+			echo $supasswd | sudo -S route add -host "$current_vpn_serverip" gw "$default_gw" dev "$default_eth_interface"
+			# start connetc to vpn server
+			echo $(bash ./GetDateString)"Start to Connect to VPN server"
+			vpn_remote_ip="$(bash ./ConnectPPTP $supasswd $default_peers)"
+			echo $(bash ./GetDateString)$vpn_remote_ip
+			# get vpn remote ip
+			vpn_remote_ip=$(echo "$vpn_remote_ip" | grep -oE "([0-9]{1,3}\.){3}[0-9]{1,3}")
+			# get result world len
+			vpn_remote_ip_len=$(echo "$vpn_remote_ip" | wc -L)
+			echo $vpn_remote_ip_len
+	
+			if [ $vpn_remote_ip_len -ne 0 ]
+			then
+				connetc_to_vpn="true"
+			else
+				connetc_to_vpn="false"
+				echo $(bash ./GetDateString)"connetc result bad....."
+				echo $(bash ./GetDateString)"report to server"
+				tmp_report_result=$(bash ./ReportToServer "$server_post_status_url" $current_local_ip $current_local_mac $vpn_client_version $current_vpn_serverip $current_vpn_uname $current_vpn_passwd $change_vpn_time_interval "FAILE" "") 
+				echo $(bash ./GetDateString)$tmp_report_result
+			fi
+
+			echo $(bash ./GetDateString)"Connect result is: $connetc_to_vpn"
+
+			if [ "$connetc_to_vpn" = "true" ]
+			then
+				# set vpn to default gw and dns
+				echo $(bash ./GetDateString)"set vpn to default gw and dns"
+				if [ $(bash ./SetnetWork $vpn_remote_ip $default_interface $supasswd $default_nameserver1 $default_nameserver2) = "ok" ]
+				then
+					echo $(bash ./GetDateString)"change_vpn_time_interval:$change_vpn_time_interval"
+					echo $(bash ./GetDateString)"status_check_time_interval:$status_check_time_interval"
+
+					tmp_total_check_cout=$(($change_vpn_time_interval/$status_check_time_interval))			
+					tmp_bad_network_try_cout=0
+					tmp_ping_result=""
+					tmp_ping_result_len=""	
+			
+					# check network status
+					while true
+					do
+						echo $(bash ./GetDateString)"tmp_total_check_cout = $tmp_total_check_cout"
+
+						if [ $tmp_total_check_cout -eq 0 ]
+						then
+							echo $(bash ./GetDateString)"Ready to chang vpn addr ..."
+							break
+						fi	
+						# check network status
+						# 1. check ppp0 is exist
+						# 2. ping 
+						tmp_ping_result=$(bash ./CheckStatus $default_interface)
+						tmp_ping_result_len=$(echo "$tmp_ping_result" | wc -L)
+						echo $(bash ./GetDateString)"tmp_ping_result_len:$tmp_ping_result_len"
+
+						if [ $tmp_ping_result_len -ne 0 ]
+						then
+							# good network status
+							# report to server
+							echo $(bash ./GetDateString)"Good Network Status"
+							tmp_vpn_post_rsp_info=$(bash ./ReportToServer "$server_post_status_url" $current_local_ip $current_local_mac $vpn_client_version $current_vpn_serverip $current_vpn_uname $current_vpn_passwd $change_vpn_time_interval "OK" "$tmp_ping_result") 
+							echo $(bash ./GetDateString)$tmp_vpn_post_rsp_info
+							
+							sleep $status_check_time_interval
+							tmp_total_check_cout=$(($tmp_total_check_cout - 1))
+						else
+							# bad network status
+							# report to server
+							echo $(bash ./GetDateString)"Ping result bad....."
+							tmp_vpn_post_rsp_info=$(bash ./ReportToServer "$server_post_status_url" $current_local_ip $current_local_mac $vpn_client_version $current_vpn_serverip $current_vpn_uname $current_vpn_passwd $change_vpn_time_interval "FAILE" "") 
+							echo $(bash ./GetDateString)$tmp_vpn_post_rsp_info
+
+							tmp_bad_network_try_cout=$(($tmp_bad_network_try_cout + 1))
+							echo $(bash ./GetDateString)"tmp_bad_network_try_cout:$tmp_bad_network_try_cout"
+
+							if [ $tmp_bad_network_try_cout -gt $default_total_bad_network_try_count ]
+							then				
+								break
+							fi
+
+							# sleep $status_check_time_interval
+							# if bad network sleep 20s to try again
+							sleep 20
+						fi #tmp_ping_result_len
+					done #check network status
+				else #SetnetWork
+					echo $(bash ./GetDateString)"SetnetWork faile"
+				fi #SetnetWork
+			else # connetc_to_vpn
+				echo $(bash ./GetDateString)"connetc to vpn faile"
+			fi #connetc_to_vpn
+		else #create_result
+			echo $(bash ./GetDateString)"create vpn profile faile"
+		fi #create_result
+	fi #is_server_req_success
+
+	echo $(bash ./GetDateString)"Waiting for 5s for try another vpn server....."
+	sleep 5
+done #vpn_client_loop
+
+# kill daemon
+echo $(bash ./GetDateString)"Kill daemon"
+killall vpn-daemon
+# rest default route
+echo $(bash ./GetDateString)"Rest route to default"
+echo $(bash ./GetDateString)"default_gw: "$default_gw
+echo $(bash ./GetDateString)"default_eth_interface: "$default_eth_interface
+
+echo $supasswd | sudo -S route del -net 0.0.0.0
+echo $supasswd | sudo -S route del -net 0.0.0.0
+echo $supasswd | sudo -S route del -net 0.0.0.0
+echo $supasswd | sudo -S route add default gw "$default_gw" dev "$default_eth_interface"
+
+echo $(bash ./GetDateString)"Bye Bye"
+

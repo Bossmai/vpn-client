@@ -1,0 +1,28 @@
+#!/bin/bash
+# $1 default_interface ppp0
+# check network is work
+# 1. check ppp0 is exist
+# 2. ping 
+
+ping_host="www.baidu.com"
+ping_ret=""
+
+rm -rf ./pingtmp
+
+if [ $# -gt 0 ]
+then
+	tmp_ip=""
+	tmp_ip=$(ifconfig $1 2>/dev/null | grep "inet " | awk '{print $2}' | grep -oE "([0-9]{1,3}\.){3}[0-9]{1,3}") 
+	
+	if [ -n $tmp_ip ] 
+	then 
+		ping $ping_host -c 5 > ./pingtmp
+		if [ $(cat ./pingtmp | grep -o rtt) = "rtt" ]
+		then
+			ping_ret=$(cat ./pingtmp  | grep rtt | sed 's:/:-:g' | sed 's/rtt //g' | sed 's/ ms//g' | sed 's/ //g' | sed 's/=/:/g' )
+			echo $ping_ret
+		fi
+	fi
+fi
+
+

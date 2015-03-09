@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# $1 interface 
+# $2 IP/MAC
+# $# 1
+
+mac_string_en="HWaddr"
+mac_string_cn="硬件地址"
+
+function getip() {
+	if [ $# -lt 1 ]
+	then
+		return 1
+	else
+		tmp_ip=""
+		tmp_ip=$(ifconfig $1 2>/dev/null | grep "inet " | awk '{print $2}' | grep -oE "([0-9]{1,3}\.){3}[0-9]{1,3}") 
+		echo $tmp_ip
+	fi
+}
+
+function getmac() {
+	if [ $# -lt 1 ]
+	then
+		return 1
+	else
+		tmp_mac=""
+		tmp_mac_string=$mac_string_en
+		tmp_lan=$(bash ./GetLanuage)
+
+		if [ "$tmp_lan" = "cn" ]
+		then
+			tmp_mac_string=$mac_string_cn
+		fi
+
+		tmp_mac=$(ifconfig $1 2>/dev/null | grep $tmp_mac_string | awk '{print $5}')
+		echo $tmp_mac
+	fi
+}
+
+
+if [ $# -gt 0 ]
+then
+	if [ "$2" = "IP" ]
+	then
+		echo $(getip $1)
+
+	elif [ "$2" = "MAC" ]
+	then
+		echo $(getmac $1)
+	else
+		echo $(getip $1)
+	fi
+
+else
+	echo "GetIPMac para error!"
+	echo "false"
+fi
+
+

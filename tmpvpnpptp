@@ -1,0 +1,9 @@
+# written by pptpsetup
+pty "pptp 59.56.31.10 --nolaunchpppd"
+lock
+noauth
+nobsdcomp
+nodeflate
+name monkeymai01
+remotename vpnpptp
+ipparam vpnpptp

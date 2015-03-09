@@ -1,0 +1,9 @@
+# written by pptpsetup
+pty "pptp 10.10.10.10 --nolaunchpppd"
+lock
+noauth
+nobsdcomp
+nodeflate
+name 123
+remotename vpnpptp
+ipparam vpnpptp

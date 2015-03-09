@@ -1,0 +1,23 @@
+#!/bin/bash
+# $1 req url
+# $2 LOCAL_IP
+# $3 LOCAL_MAC
+# $4 VPN_CLIENT_VERSION
+# $5 VPN_IP
+# $6 VPN_USER
+# $7 VPN_PASSWOR
+# $8 VPN_TIMEOUT
+# $# 8
+
+#if [ $# -ne 8 ]
+#then
+#echo "GetFromServer para error!"
+#else
+#req_string=$(echo $1"?LOCAL_IP="$2"&LOCAL_MAC="$3"&VPN_CLIENT_VERSION="$4"&VPN_IP="$5"&VPN_USER="$6"&VPN_PASSWOR="$7"&VPN_TIMEOUT="$8)
+#req_result=$(curl $req_string)
+#echo $req_result
+#fi
+
+
+vpn_ip=`python ./getIP.py`
+echo '{"VPN_IP":"'$vpn_ip'","VPN_USER":"monkeymai01","VPN_PASSWORD":"crazymonkey","VPN_TIMEOUT":"1800","VPN_PARA":""}'

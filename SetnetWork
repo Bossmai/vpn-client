@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# $1:gateway
+# $2:dev
+# $3:passwd
+# $4:dns
+# $5:dns
+# $#:5
+
+
+if [ $# -lt 1 ] || [ $# -gt 5 ]
+then
+	echo "setnetwork para error!"
+else
+	# del the default route
+	echo $3 | sudo -S route del -net 0.0.0.0
+	echo $3 | sudo -S route del -net 0.0.0.0
+	echo $3 | sudo -S route del -net 0.0.0.0
+
+	# add new default route
+	echo $3 | sudo -S route add default gw $1 dev $2
+	
+	# chang dns
+	# bakup old dns
+	echo $3 | sudo -S mv /etc/resolv.conf /etc/resolv.conf.old
+	# set new dns
+	echo "nameserver $4" > ./resolv.conf
+	echo "nameserver $5" >> ./resolv.conf
+	echo $3 | sudo -S mv ./resolv.conf /etc/resolv.conf
+	echo "ok"
+fi
+

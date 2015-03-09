@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# $1 supasswd
+# $2 peers default is vpnpptp
+# $# 2
+# local  IP address
+# remote IP address
+vpn_remote_ip=""
+
+if [ $# -ne 2 ]
+then
+	echo "ConnectPPTP para error!"
+	echo "abc"
+else
+#echo $1 | sudo -S pppd call $2 updetach | grep "local  IP address" | grep -oE "([0-9]{1,3}\.){3}[0-9]{1,3}"
+rm -rf ./tmpConnect.log
+echo $1 | sudo -S pppd call $2 updetach > ./tmpConnect.log
+cat ./tmpConnect.log | grep "local  IP address" | grep -oE "([0-9]{1,3}\.){3}[0-9]{1,3}"
+fi
