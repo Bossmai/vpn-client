@@ -2,7 +2,7 @@
 echo "------------------- VPN CLIENT -------------------"
 echo "Running..."
 cd $HOME/crazy-monkey/vpn-client/
-if [ ! -d "./log"]; then
+if [ ! -d "./log" ]; then
 	mkdir ./log
 fi
 bash ./main 1>>./log/"$(TZ="Asia/Shanghai" date +%F)".log &
