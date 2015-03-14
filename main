@@ -73,7 +73,8 @@ vpn_remote_ip_len=0
 # if ture must exit
 if [ "$(ps -e | grep -o vpn-daemon)" = "vpn-daemon" ]
 then
-	pgrep vpn-daemon | xargs kill -9
+	echo The vpn-daemon have been running...
+	exit
 fi
 
 echo $(bash ./GetDateString)"Start vpn-deamon"
