@@ -14,7 +14,7 @@ default_eth_interface="eth0"
 # bad ping total try cout, if bad count more than this, it will change another vpn ip auto
 default_total_bad_network_try_count=3
 # su pass 
-supasswd="Dextrys2012"
+supasswd="android"
 
 # default peers must create manual
 default_peers="vpnpptp"
