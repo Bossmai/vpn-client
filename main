@@ -56,9 +56,9 @@ current_local_mac=""
 current_local_ip=""
 
 # sleep time for change vpn time (s)
-change_vpn_time_interval=600
+change_vpn_time_interval=1200
 # sleep time for check status time (s)
-status_check_time_interval=300
+status_check_time_interval=60
 
 is_server_req_success="false"
 
